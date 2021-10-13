@@ -1,0 +1,158 @@
+<div class="control-section">
+  <ejs-treegrid
+    #grid
+    [allowFiltering]='isEnableFilter'
+    [allowReordering]="true"
+    [allowResizing]="true"
+    [enableHover]="true"
+    [contextMenuItems]='contextMenuItems'
+    [treeColumnIndex]='0'
+    [dataSource]='data'
+    [editSettings]="editSettings"
+    childMapping='subtasks'
+    [frozenColumns]="frozenColumns"
+    [allowSorting]='allowSorting'
+    [allowMultiSorting]='allowSorting'
+    height='100%'
+    width='100%'
+    [showColumnChooser]='true'
+    [columns]="columns"
+    [selectionSettings]='selectionOptions'
+    [enableVirtualization]='true'
+    [allowRowDragAndDrop]='true'
+    [rowDropSettings]='rowDrop'
+    [copyHierarchyMode]='"None"'
+  >
+  </ejs-treegrid>
+</div>
+
+<ejs-contextmenu
+  #headerContextMenu
+  target='.e-gridheader'
+  [items]='headerMenuItems'
+  (beforeOpen)='beforeOpenHeaderCM($event)'
+  (select)='select($event)'
+  (beforeItemRender)='itemRender($event)'
+  (beforeClose)='beforeCloseCM($event)'
+  [cssClass]="'custom-cm'"
+>
+</ejs-contextmenu>
+
+<ejs-contextmenu
+  #rowContextMenu
+  target='.e-gridcontent'
+  [items]='rowMenuItems'
+  (beforeOpen)='beforeOpenRowCM($event)'
+  (beforeItemRender)='itemRender($event)'
+  (beforeClose)='beforeCloseCM($event)'
+  (select)='selectRow($event)'
+>
+</ejs-contextmenu>
+
+<ejs-dialog
+  id="dialogEdit"
+  #dialogEdit
+  [visible]='visible'
+  showCloseIcon='true'
+  (open)="dialogOpen($event)"
+  (close)="dialogClose()"
+  (beforeOpen)="beforeOpenDialog()"
+  width='30%'
+>
+  <ng-template #header>
+   Rename a column
+  </ng-template>
+  <ng-template #content>
+   <input id="inVal" class="e-input" type="text" placeholder="Enter here!"/>
+   <button id="renameButton" class="e-control e-btn e-primary" data-ripple="true">Rename</button>
+  </ng-template>
+</ejs-dialog>
+
+<ejs-dialog
+  id="dialogStyle"
+  #dialogStyle
+  [visible]='visible'
+  showCloseIcon='true'
+  (open)="dialogOpen($event)"
+  (close)="dialogClose()"
+  width='30%'
+>
+  <ng-template #header>
+    Style
+  </ng-template>
+  <ng-template #content>
+    <div [formGroup]="styleForm">
+      <div class="form-row">
+            <div class="form-group col-md-6">
+                <div class="e-float-input e-control-wrapper">
+                    <input formControlName="minWidth"  maxlength=4 id="minWidth" name="minWidth" type="text" >
+                    <span class="e-float-line"></span>
+                    <label class="e-float-text e-label-top" for="minWidth"> Min Width</label>
+                </div>
+            </div>
+      </div>
+      <div class="form-group">
+          <ejs-dropdownlist
+            id="typeData"
+            formControlName="typeData"
+            popupHeight='300px'
+            placeholder=" Data-Type"
+            floatLabelType='Always'
+            [dataSource]='dataTypes'
+            [fields]="{text: 'text', value: 'value' }"
+          >
+          </ejs-dropdownlist>
+      </div>
+      <div class="form-group">
+        <ejs-dropdownlist
+          id="textAlign"
+          formControlName="textAlign"
+          popupHeight='300px'
+          placeholder=" Alignment"
+          floatLabelType='Always'
+          [dataSource]='alignment'
+          [fields]="{text: 'text', value: 'value' }"
+        >
+        </ejs-dropdownlist>
+      </div>
+      <div class="form-row">
+      <div class="form-group">
+        <div class="e-float-input e-control-wrapper">
+          <input type="color" formControlName="fontColor" name="fontColor" id="fontColor"/>
+          <span class="e-float-line"></span>
+          <label class="e-float-text e-label-top" for="fontColor">Font-color</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="e-float-input e-control-wrapper">
+          <input formControlName="fontSize" name="fontSize" id="fontSize" />
+          <span class="e-float-line"></span>
+          <label class="e-float-text e-label-top" for="fontSize">Font-Size</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="e-float-input e-control-wrapper">
+          <input type="color" formControlName="backgroundColor" name="backgroundColor" id="backgroundColor" />
+          <span class="e-float-line"></span>
+          <label class="e-float-text e-label-top" for="backgroundColor">Background-color</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <ejs-dropdownlist
+        id="textWrap"
+        formControlName="textWrap"
+        popupHeight='300px'
+        placeholder=" Text-Wrap"
+        floatLabelType='Always'
+        [dataSource]='textWrap'
+        [fields]="{text: 'text', value: 'value' }"
+      >
+      </ejs-dropdownlist>
+    </div>
+  </div>
+  </ng-template>
+  <ng-template #footerTemplate>
+    <button id="saveButton" class="e-control e-btn e-primary sendButton" data-ripple="true">Save</button>
+</ng-template>
+</ejs-dialog>
