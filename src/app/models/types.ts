@@ -38,7 +38,7 @@ export type EditCell =
   | BooleanEditCell
   | NumericEditCell;
 
-export interface IEditCell {
+export interface ICustomEditCell {
   edit: EditCell;
   type: string;
 }

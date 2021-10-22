@@ -3,10 +3,20 @@
 }
 
 ::ng-deep .e-grid {
+  .e-content {
+    cursor: default;
+  }
   .e-movablecontent,
   .e-movableheader {
     & > .e-table {
       width: 100% !important;
+    }
+  }
+
+  .bg-pink {
+    background: pink !important;
+    & > .e-active {
+      background: unset;
     }
   }
 

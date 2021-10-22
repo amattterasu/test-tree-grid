@@ -19,8 +19,9 @@ import {
   TreeGridModule,
   VirtualScrollService,
 } from '@syncfusion/ej2-angular-treegrid';
-
+import { HttpClientModule } from '@angular/common/http';
 import { AppComponent } from './app.component';
+
 @NgModule({
   declarations: [AppComponent],
   imports: [
@@ -32,6 +33,7 @@ import { AppComponent } from './app.component';
     DialogModule,
     ReactiveFormsModule,
     DropDownListModule,
+    HttpClientModule,
   ],
   providers: [
     ContextMenuService,

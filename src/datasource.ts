@@ -1,38 +1,31 @@
-export interface ITaskModel {
-  taskID?: number;
-  taskName?: string;
-  startDate?: Date;
-  endDate?: Date;
-  duration?: number;
-  approved?: boolean;
-  priority?: string;
-  progress?: number;
-  subtasks?: ITaskModel[];
-}
+import { TaskModel } from './app/models/taskModel';
+import { uid } from 'uid';
+import { UID_LENGTH } from './app/shared';
 
-export function createTasks(countRows: number): ITaskModel[] {
+export function createTasks(
+  taskCount: number,
+  subTaskCount: number
+): TaskModel[] {
   const data = [];
-  let taskID;
-  let subtasks;
-  for (let i = 1; i <= countRows; i) {
-    subtasks = [];
-    taskID = i++;
 
-    for (i; i <= taskID + 5; i++) {
+  for (let root = 1; root <= taskCount; root++) {
+    const subtasks = [];
+
+    for (let sub = 1; sub <= subTaskCount; sub++) {
       subtasks.push({
-        taskID: i,
-        taskName: `Plan timeline_${i}`,
+        taskID: uid(UID_LENGTH),
+        taskName: `Plan timeline_${sub}`,
         startDate: new Date('02/03/2017'),
         endDate: new Date('02/07/2017'),
-        duration: 5 + i,
+        duration: 5 + sub,
         priority: 'Normal',
         approved: false,
       });
     }
 
     const task = {
-      taskID,
-      taskName: `Planning_${taskID}`,
+      taskID: uid(UID_LENGTH),
+      taskName: `Planning_${root}`,
       startDate: new Date(`02/03/2017`),
       endDate: new Date('02/07/2017'),
       duration: 5,
@@ -43,12 +36,10 @@ export function createTasks(countRows: number): ITaskModel[] {
     data.push(task);
   }
 
-  data[data.length - 1].subtasks.splice(3, 2);
-
   return data;
 }
 
-export let sampleData: ITaskModel[] = [
+export let sampleData: any = [
   {
     taskID: 1,
     taskName: 'Planning',
@@ -395,5 +386,107 @@ export let sampleData: ITaskModel[] = [
         ],
       },
     ],
+  },
+];
+
+export const serverData: TaskModel[] = [
+  {
+    taskID: 1,
+    taskName: 'Parent Task 1',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Critical',
+    duration: 42,
+    isParent: true,
+    approved: true,
+  },
+  {
+    taskID: 3,
+    taskName: 'Child Task 3',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Critical',
+    duration: 42,
+    isParent: false,
+  },
+  {
+    taskID: 5,
+    taskName: 'Child Task 5',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Low',
+    duration: 35,
+    parentIndex: 1,
+    isParent: true,
+  },
+  {
+    taskID: 7,
+    taskName: 'Sub Task 7',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Normal',
+    duration: 6,
+    parentIndex: 5,
+    isParent: false,
+  },
+  {
+    taskID: 9,
+    taskName: 'Sub Task 9',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Normal',
+    duration: 2,
+    parentIndex: 5,
+    isParent: false,
+  },
+  {
+    taskID: 11,
+    taskName: 'Sub Task 11',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Normal',
+    duration: 32,
+    parentIndex: 5,
+    isParent: false,
+  },
+  {
+    taskID: 13,
+    taskName: 'Child Task 13',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Critical',
+    duration: 3,
+    parentIndex: 1,
+    isParent: false,
+  },
+  {
+    taskID: 15,
+    taskName: 'Child Task 15',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Critical',
+    duration: 33,
+    parentIndex: 1,
+    isParent: false,
+  },
+  {
+    taskID: 17,
+    taskName: 'Child Task 17',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Low',
+    duration: 8,
+    parentIndex: 1,
+    isParent: true,
+  },
+  {
+    taskID: 19,
+    taskName: 'Sub Task 19',
+    startDate: '1992-06-07T00:00:00Z',
+    endDate: '1994-08-25T00:00:00Z',
+    priority: 'Normal',
+    duration: 41,
+    parentIndex: 17,
+    isParent: false,
   },
 ];

@@ -1,21 +1,20 @@
+import { TaskModel } from './models/taskModel';
 import { textWrap } from './models/wrap';
 import { FormService } from './services/form.service';
-import { ITaskModel } from './../datasource';
 import { ColumnsService } from './services/columns.service';
-import { Component, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
+  CellSaveEventArgs,
   ColumnModel,
   EditSettingsModel,
   SelectionSettingsModel,
   TreeGridComponent,
 } from '@syncfusion/ej2-angular-treegrid';
-import { createTasks } from '../datasource';
 import { BeforeOpenCloseEventArgs } from '@syncfusion/ej2-angular-inputs';
 import {
   BeforeOpenCloseMenuEventArgs,
   ContextMenuComponent,
   MenuEventArgs,
-  MenuItemModel,
 } from '@syncfusion/ej2-angular-navigations';
 import { closest, createElement } from '@syncfusion/ej2-base';
 import { createCheckBox } from '@syncfusion/ej2-angular-buttons';
@@ -27,49 +26,69 @@ import {
   headerMenuItems,
   rowCheckboxMenuItems,
   rowMenuItems,
-} from './models/items';
+} from './models/menu-items';
 import { FieldSettingsModel } from '@syncfusion/ej2-angular-dropdowns';
 import { dataTypes } from './models/types';
 import { alignment } from './models/alignment';
+import { getClone, UID_LENGTH } from './shared';
+import { uid } from 'uid';
+import { RequestService } from './services/request.service';
+import { RowDragEventArgs } from '@syncfusion/ej2-angular-grids';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
-export class AppComponent {
-  public data: ITaskModel[];
+export class AppComponent implements OnInit, AfterViewInit {
+  public data: TaskModel[];
   public contextMenuItems: Object[];
   public editSettings: EditSettingsModel;
-  public headerMenuItems: MenuItemModel[];
-  public rowMenuItems: MenuItemModel[];
   public isEnableFilter: boolean;
   public frozenColumns: number;
   public allowSorting: boolean;
-  private clickedColIndex: number;
-  private checkBoxes: String[];
-  private selectedCheckBox: String[];
   public columns: ColumnModel[];
   public selectionOptions: SelectionSettingsModel;
-  public visible: Boolean = false;
-  public rowDrop: Object;
+  public visible: Boolean;
   public styleForm: FormGroup;
   public dataTypes: FieldSettingsModel[];
   public alignment: FieldSettingsModel[];
   public textWrap: FieldSettingsModel[];
+  private clickedColIndex: number;
+  private checkBoxes: String[];
+  private selectedCheckBox: String[];
   private clickedRowIndex: number;
+  private copyData: TaskModel[];
+  private needReverseData: boolean;
+  private highlightedRows: HTMLElement[];
+  private cutMode: boolean;
 
   @ViewChild('grid') grid: TreeGridComponent;
-  @ViewChild('headerContextMenu') headerContextMenu: ContextMenuComponent;
-  @ViewChild('rowContextMenu') rowContextMenu: ContextMenuComponent;
+  @ViewChild('contextMenu') contextMenu: ContextMenuComponent;
   @ViewChild('dialogEdit') dialogEdit: DialogComponent;
   @ViewChild('dialogStyle') dialogStyle: DialogComponent;
 
   constructor(
     private readonly columnsService: ColumnsService,
-    private readonly formService: FormService
+    private readonly formService: FormService,
+    private readonly requestService: RequestService
   ) {
     this.initData();
+  }
+
+  ngOnInit() {
+    this.requestService.getColumns().subscribe((columns: ColumnModel[]) => {
+      this.columns = columns;
+    });
+    this.requestService.getRows().subscribe((rows: TaskModel[]) => {
+      this.data = rows;
+      // this.data = serverData;
+      console.log(this.data.length);
+    });
+  }
+
+  ngAfterViewInit() {
+    this.columnsService.grid = this.grid;
   }
 
   /**
@@ -86,20 +105,12 @@ export class AppComponent {
       form = null;
       dialog = this.dialogEdit;
     }
-    this.columnsService.grid = this.grid;
     this.columnsService.addListeners(
       this.clickedColIndex,
       this.grid.columns as ColumnModel[],
       dialog,
       form
     );
-  }
-
-  /**
-   * Срабатывает после закрытия модала
-   */
-  public dialogClose(): void {
-    // this.grid.refreshColumns();
   }
 
   public beforeOpenDialog(): void {
@@ -113,106 +124,253 @@ export class AppComponent {
    * Инициализация
    */
   initData(): void {
+    this.columns = [{}];
     this.contextMenuItems = [];
-    this.data = createTasks(1000);
     this.editSettings = {
       allowEditing: true,
       allowAdding: true,
       allowDeleting: true,
+      allowEditOnDblClick: false,
       mode: 'Dialog',
-      newRowPosition: 'Bottom',
     };
-    this.headerMenuItems = [...headerCheckboxMenuItems, ...headerMenuItems];
-    this.rowMenuItems = [...rowCheckboxMenuItems, ...rowMenuItems];
     this.isEnableFilter = false;
     this.frozenColumns = 0;
-    this.clickedColIndex = 0;
     this.selectedCheckBox = [];
     this.allowSorting = false;
     this.checkBoxes = [...headerCheckboxMenuItems, ...rowCheckboxMenuItems].map(
       (el) => el.id
     );
-    this.columns = this.columnsService.defaultColumns;
     this.selectionOptions = {
-      type: 'Multiple',
       mode: 'Row',
     };
     this.styleForm = this.formService.createFormGroup();
     this.dataTypes = dataTypes;
     this.alignment = alignment;
     this.textWrap = textWrap;
+    this.copyData = [];
+    this.highlightedRows = [];
+    this.visible = false;
+    this.cutMode = false;
   }
 
   /**
-   * Событие открытия контекстного меню
-   * @param args BeforeOpenCloseEventArgs
-   */
-  public beforeOpenHeaderCM(args: BeforeOpenCloseEventArgs): void {
-    this.dialogEdit.hide();
-    this.dialogStyle.hide();
-    this.clickedColIndex = +(args.event.target as Element)
-      .closest('.e-headercell')
-      .getAttribute('aria-colindex');
-  }
-
-  /**
-   * Обработчик клика по элементу меню хедера колонки
-   * @param args MenuEventArgs
+   * Обработчик клика по контекстному меню
+   * @param args
    */
   public select(args: MenuEventArgs): void {
     switch (args.item.id) {
-      case 'filter':
+      case 'col-filter':
         this.isEnableFilter = !this.isEnableFilter;
         break;
-      case 'frozen':
+      case 'col-frozen':
         this.frozenCols();
-        this.refreshHeaderCM();
+        this.refreshContextMenu();
         break;
-      case 'sort':
+      case 'col-sort':
         this.allowSorting = !this.allowSorting;
         break;
-      case 'show':
+      case 'col-choose':
         this.showChooserColumns();
         break;
-      case 'new':
+      case 'col-new':
         this.columnsService.addColumn(this.grid.columns as ColumnModel[]);
         this.grid.refreshColumns();
         break;
-      case 'del':
+      case 'col-del':
         this.columnsService.deleteColumn(
           this.clickedColIndex,
           this.grid.columns as ColumnModel[]
         );
         this.grid.refreshColumns();
         break;
-      case 'edit':
+      case 'col-edit':
         this.onOpenEdit();
         break;
-      case 'style':
+      case 'col-style':
         this.onOpenStyle();
+        break;
+      case 'row-multi-select':
+        setTimeout(() => {
+          this.toggleSelectionType();
+        }, 5);
+        break;
+      case 'row-addNext':
+      case 'row-addChild':
+        const isParent: boolean = args.item.id === 'row-addChild';
+        this.addRow(isParent);
+        break;
+      case 'row-delRow':
+        this.deleteRow();
+        break;
+      case 'row-editRow':
+        this.editRow();
+        break;
+      case 'row-copy':
+      case 'row-cut':
+        this.cutMode = args.item.id === 'row-cut';
+        this.copyRows();
+        break;
+      case 'row-paste-sibling':
+      case 'row-paste-child':
+        if (this.copyData.length) {
+          const isParent: boolean = args.item.id === 'row-paste-child';
+          this.pasteRows(isParent);
+        }
         break;
     }
   }
 
   /**
-   * Обработчик клика по заголовку строки
-   * @param args
+   * Добавить строку
+   * @param position Позиция добавления строки
    */
-  public selectRow(args: MenuEventArgs): void {
-    switch (args.item.id) {
-      case 'new':
-        this.grid.addRecord({ taskID: this.grid.getRows().length + 1 });
-        break;
-      case 'del':
-        this.grid.deleteRecord();
-        break;
-      case 'copy':
-        break;
-      case 'cut':
-        break;
-      case 'child':
-        break;
+  private addRow(isParent: boolean): void {
+    this.grid.selectRow(this.clickedRowIndex);
+    this.createRow(isParent);
+    this.grid.refresh();
+  }
+
+  /**
+   * Выделить строку при копировании
+   */
+  private highlightedColor(): void {
+    this.highlightedRows.forEach((row: HTMLElement) => {
+      row.classList.remove('bg-pink');
+    });
+    this.grid.getSelectedRows().forEach((row: Element) => {
+      (row as HTMLElement).classList.add('bg-pink');
+      this.highlightedRows.push(row as HTMLElement);
+    });
+  }
+
+  /**
+   * Фокус на нажатую строку
+   */
+  private rowFocus(): void {
+    if (this.grid.selectionSettings.type === 'Single') {
+      this.grid.selectRow(this.clickedRowIndex);
     }
+  }
+
+  /**
+   * Скопировать выделенные строки
+   */
+  private copyRows(): void {
+    this.rowFocus();
+    this.highlightedColor();
+
+    this.copyData = [];
+    this.needReverseData = true;
+
+    this.grid.getSelectedRecords().forEach((row: TaskModel) => {
+      const rowClone = getClone(row);
+      this.copyData.push(rowClone);
+    });
+  }
+
+  /**
+   * Вставить строки
+   * @param position Позиция добавления строк
+   */
+  private pasteRows(isParent: boolean): void {
+    this.grid.selectRow(this.clickedRowIndex);
+    if (this.needReverseData && this.grid.selectionSettings.type !== 'Single') {
+      this.copyData.reverse();
+      this.needReverseData = false;
+    }
+
+    if (this.cutMode) {
+      this.copyData.forEach((copyRow: TaskModel) => {
+        this.data = this.data.filter(
+          (dataRow) => dataRow.taskID !== copyRow.taskID
+        );
+      });
+    }
+
+    this.copyData.forEach((copyRow: TaskModel) => {
+      this.createRow(isParent, {
+        ...(copyRow as any).taskData,
+      });
+    });
+
+    if (this.cutMode) {
+      this.cutMode = false;
+      this.copyData = [];
+    }
+    this.grid.refresh();
+    this.grid.refreshColumns();
+  }
+
+  public actionComplete(args: CellSaveEventArgs) {
+    if (args.requestType === 'save') {
+      const task = new TaskModel(args.data);
+
+      this.grid.showSpinner();
+      this.requestService.updateRow(task).subscribe((res) => {
+        if (res.success) {
+          this.data = [...this.data];
+        }
+        this.grid.hideSpinner();
+      });
+    }
+  }
+
+  public rowDrop(args: RowDragEventArgs) {
+    if (args.fromIndex === args.dropIndex) {
+      return;
+    }
+  }
+  /**
+   * Создать строку
+   * @param position Позиция добавления
+   * @param data Данные строки для копирования
+   */
+  private createRow(isParent: boolean, data?: TaskModel): void {
+    const selectedRec = this.grid.getSelectedRecords()[0] as TaskModel;
+    const taskID = this.cutMode ? data.taskID : uid();
+
+    const newRec = {
+      ...data,
+      taskID,
+      parentIndex: isParent
+        ? selectedRec.taskID
+        : (selectedRec.parentIndex as TaskModel)?.taskID ?? null,
+      isParent: isParent,
+    };
+    this.data.splice(this.clickedRowIndex + 1, 0, newRec);
+  }
+
+  /**
+   * Задать тип выделения строк
+   */
+  private toggleSelectionType(): void {
+    const isMultiSelect = this.selectedCheckBox.includes('row-multi-select');
+    this.grid.selectionSettings.type = isMultiSelect ? 'Multiple' : 'Single';
+  }
+
+  /**
+   * Редактировать строку
+   */
+  private editRow(): void {
+    this.grid.selectRow(this.clickedRowIndex);
+    this.grid.startEdit();
+  }
+
+  /**
+   * Удалить строку
+   */
+  private deleteRow(): void {
+    this.rowFocus();
+    const ids = this.grid
+      .getSelectedRecords()
+      .map((row: TaskModel) => row.taskID);
+
+    this.requestService.deleteRow(ids).subscribe((res) => {
+      if (res.success) {
+        this.grid.deleteRecord();
+        this.grid.refreshColumns();
+      }
+    });
   }
 
   /**
@@ -227,7 +385,10 @@ export class AppComponent {
    */
   public onOpenStyle(): void {
     const col = this.columns[this.clickedColIndex];
-    this.styleForm = this.formService.createFormGroup(col);
+    const colStyles = (
+      this.grid.getColumnHeaderByIndex(this.clickedColIndex) as HTMLElement
+    ).style;
+    this.styleForm = this.formService.createFormGroup(col, colStyles);
     this.dialogStyle.show();
   }
 
@@ -235,9 +396,8 @@ export class AppComponent {
    * Открытие модала отображения/скрытия столбцов
    */
   private showChooserColumns(): void {
-    const tarElement: HTMLElement = this.headerContextMenu.element;
-    const x = tarElement.offsetLeft + tarElement.clientWidth;
-    this.grid.columnChooserModule.openColumnChooser(x, 0);
+    const tarElement: HTMLElement = this.contextMenu.element;
+    this.grid.columnChooserModule.openColumnChooser(tarElement.offsetLeft, 0);
   }
 
   /**
@@ -250,23 +410,23 @@ export class AppComponent {
         : ++this.clickedColIndex;
 
     // Virtual scrolling is not compatible with Batch editing, detail template and Frozen columns
-    this.grid.enableVirtualization = !this.grid.enableVirtualization;
+    // this.grid.enableVirtualization = !this.grid.enableVirtualization;
     this.frozenColumns = this.frozenColumns ? 0 : currentColumn;
   }
 
   /**
    * Срабатывает перед закрытием контекстного меню
-   * @param args BeforeOpenCloseMenuEventArgs
+   * @param args
    */
   public beforeCloseCM(args: BeforeOpenCloseMenuEventArgs): void {
-    if (!(args.event.target as Element).closest('.e-menu-item')) {
-      return;
-    }
-    const checkbox: HTMLElement = closest(
+    const checkbox = closest(
       args.event.target as Element,
       '.e-menu-item'
     ) as HTMLElement;
 
+    if (!checkbox) {
+      return;
+    }
     const frame: HTMLElement = checkbox.querySelector('.e-frame');
 
     if (checkbox && frame?.classList.contains('e-check')) {
@@ -282,7 +442,7 @@ export class AppComponent {
 
   /**
    * Формирование шаблона контекстного меню
-   * @param args MenuEventArgs
+   * @param args
    */
   public itemRender(args: MenuEventArgs): void {
     if (!this.checkBoxes.includes(args.item.id)) {
@@ -297,27 +457,35 @@ export class AppComponent {
   }
 
   /**
-   * Обновление контекстного меню Column Header
-   * Исправляет баг с непоявлением контекстного меню
+   * Обновление контекстного меню
+   * Исправляет баг с непоявлением контекстных меню
    * после манипуляций с колонками
    */
-  private refreshHeaderCM(): void {
+  private refreshContextMenu(): void {
     setTimeout(() => {
-      this.headerContextMenu.refresh();
+      this.contextMenu.refresh();
     }, 5);
   }
 
   /**
-   * Срабатывает до открытия контекстного меню строки
-   * Target - весь контент таблицы, а необходим только drag-item
+   * Срабатывает до открытия контекстного меню
    * @param args
    */
-  public beforeOpenRowCM(args: BeforeOpenCloseEventArgs): void {
-    if (!(args.event.target as Element).closest('.e-rowdragdrop')) {
-      args.cancel = true;
+  public beforeOpenContextMenu(args: BeforeOpenCloseEventArgs): void {
+    const elem: Element = args.event.target as Element;
+    const row = elem.closest('.e-rowdragdrop');
+    const col = elem.closest('.e-headercell');
+
+    if (row) {
+      this.contextMenuItems = [...rowCheckboxMenuItems, ...rowMenuItems];
+      this.clickedRowIndex = +row.parentElement.getAttribute('aria-rowindex');
+      return;
     }
-    this.clickedRowIndex = +(args.event.target as Element)
-      .closest('.e-row')
-      .getAttribute('aria-rowindex');
+    if (col) {
+      this.contextMenuItems = [...headerCheckboxMenuItems, ...headerMenuItems];
+      this.clickedColIndex = +col.getAttribute('aria-colindex');
+      return;
+    }
+    args.cancel = true;
   }
 }
