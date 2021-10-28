@@ -1,3 +1,4 @@
+import { MAX_FONT_SIZE } from './../shared';
 import { ICustomEditCell } from './../models/types';
 import { FormGroup } from '@angular/forms';
 import { DialogComponent } from '@syncfusion/ej2-angular-popups';
@@ -13,7 +14,6 @@ import {
   BooleanEditCell,
   DatePickerEditCell,
   IEditCell,
-  IGrid,
   NumericEditCell,
 } from '@syncfusion/ej2-angular-grids';
 import { IStyles } from '../models/style-interface';
@@ -117,7 +117,9 @@ export class ColumnsService {
           value.fontColor ??
           (col.customAttributes?.style as CSSStyleDeclaration)?.color,
         fontSize: value.fontSize
-          ? value.fontSize + 'px'
+          ? (Number(value.fontSize) > MAX_FONT_SIZE
+              ? MAX_FONT_SIZE
+              : value.fontSize) + 'px'
           : (col.customAttributes?.style as CSSStyleDeclaration)?.fontSize,
         backgroundColor:
           value.backgroundColor ??

@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { ColumnModel } from '@syncfusion/ej2-angular-treegrid';
 import { Observable } from 'rxjs';
 import { TaskModel } from '../models/taskModel';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -10,7 +11,7 @@ import { TaskModel } from '../models/taskModel';
 export class RequestService {
   private readonly header: HttpHeaders;
 
-  private readonly BASIC_URL = 'https://test-tree-grid-api.herokuapp.com/api';
+  private readonly BASIC_URL = environment.API_URL;
 
   constructor(private readonly http: HttpClient) {
     this.header = new HttpHeaders({
@@ -29,6 +30,19 @@ export class RequestService {
       this.BASIC_URL + '/columns',
       JSON.stringify({
         headerText,
+      }),
+      {
+        headers: this.header,
+      }
+    );
+  }
+
+  public createRow(row: Partial<TaskModel>, position: number): Observable<any> {
+    return this.http.post<any>(
+      this.BASIC_URL + '/create-rows',
+      JSON.stringify({
+        row,
+        position,
       }),
       {
         headers: this.header,

@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "dist/test-tree-grid",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

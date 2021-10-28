@@ -2,10 +2,10 @@
   <ejs-treegrid
     #grid
     [allowFiltering]='isEnableFilter'
-    [allowReordering]="true"
+    [allowReordering]="false"
     [allowResizing]="true"
     [treeColumnIndex]='0'
-    [dataSource]='data'
+    [(dataSource)]='data'
     [editSettings]="editSettings"
     [frozenColumns]="frozenColumns"
     [allowSorting]='allowSorting'
@@ -17,10 +17,12 @@
     [selectionSettings]='selectionOptions'
     [allowRowDragAndDrop]='true'
     [copyHierarchyMode]='"None"'
-    [enableVirtualization]='false'
+    [enableVirtualization]='true'
     hasChildMapping='isParent' parentIdMapping='parentIndex' idMapping='taskID'
     (actionComplete)="actionComplete($event)"
+    (actionBegin)="actionBegin($event)"
     (rowDrop)="rowDrop($event)"
+    (expanding)="refreshGrid()"
   >
   </ejs-treegrid>
 </div>

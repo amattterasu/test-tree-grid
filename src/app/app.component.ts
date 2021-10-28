@@ -2,7 +2,13 @@ import { TaskModel } from './models/taskModel';
 import { textWrap } from './models/wrap';
 import { FormService } from './services/form.service';
 import { ColumnsService } from './services/columns.service';
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {
   CellSaveEventArgs,
   ColumnModel,
@@ -34,13 +40,15 @@ import { getClone, UID_LENGTH } from './shared';
 import { uid } from 'uid';
 import { RequestService } from './services/request.service';
 import { RowDragEventArgs } from '@syncfusion/ej2-angular-grids';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
-export class AppComponent implements OnInit, AfterViewInit {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   public data: TaskModel[];
   public contextMenuItems: Object[];
   public editSettings: EditSettingsModel;
@@ -62,6 +70,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   private needReverseData: boolean;
   private highlightedRows: HTMLElement[];
   private cutMode: boolean;
+  private destroy$: Subject<any> = new Subject<any>();
 
   @ViewChild('grid') grid: TreeGridComponent;
   @ViewChild('contextMenu') contextMenu: ContextMenuComponent;
@@ -80,15 +89,29 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.requestService.getColumns().subscribe((columns: ColumnModel[]) => {
       this.columns = columns;
     });
-    this.requestService.getRows().subscribe((rows: TaskModel[]) => {
-      this.data = rows;
-      // this.data = serverData;
-      console.log(this.data.length);
-    });
+    this.requestService
+      .getRows()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((rows: TaskModel[]) => {
+        this.data = rows;
+        console.info('Rows count:', this.data.length);
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next(true);
+    this.destroy$.unsubscribe();
   }
 
   ngAfterViewInit() {
     this.columnsService.grid = this.grid;
+  }
+
+  /**
+   * Обновление таблицы
+   */
+  public refreshGrid(): void {
+    this.grid.refresh();
   }
 
   /**
@@ -164,7 +187,9 @@ export class AppComponent implements OnInit, AfterViewInit {
         break;
       case 'col-frozen':
         this.frozenCols();
-        this.refreshContextMenu();
+        setTimeout(() => {
+          this.contextMenu.refresh();
+        }, 5);
         break;
       case 'col-sort':
         this.allowSorting = !this.allowSorting;
@@ -217,6 +242,9 @@ export class AppComponent implements OnInit, AfterViewInit {
           this.pasteRows(isParent);
         }
         break;
+      case 'col-reorder':
+        this.grid.allowReordering = !this.grid.allowReordering;
+        break;
     }
   }
 
@@ -226,8 +254,26 @@ export class AppComponent implements OnInit, AfterViewInit {
    */
   private addRow(isParent: boolean): void {
     this.grid.selectRow(this.clickedRowIndex);
-    this.createRow(isParent);
-    this.grid.refresh();
+    // this.createRow(isParent);
+    const selectedRec = this.grid.getSelectedRecords()[0] as TaskModel;
+    const offsetNextPaste = 2;
+    const newRec = new TaskModel({
+      parentIndex: isParent ? selectedRec.taskID : selectedRec.parentIndex,
+      isParent: isParent,
+    });
+
+    const position = this.clickedRowIndex + offsetNextPaste;
+    this.requestService.createRow(newRec, position).subscribe((res) => {
+      if (res.success) {
+        this.data.splice(position, 0, {
+          ...newRec,
+          taskID: res.id,
+        });
+        setTimeout(() => {
+          this.refreshGrid();
+        }, 5);
+      }
+    });
   }
 
   /**
@@ -297,22 +343,45 @@ export class AppComponent implements OnInit, AfterViewInit {
       this.cutMode = false;
       this.copyData = [];
     }
-    this.grid.refresh();
+    setTimeout(() => {
+      this.refreshGrid();
+    }, 5);
     this.grid.refreshColumns();
+  }
+
+  public actionBegin(args: CellSaveEventArgs): void {
+    if (args.action === 'edit') {
+      args.data = { ...args.data, taskID: (args.rowData as TaskModel).taskID };
+    }
+    if (args.requestType === 'virtualscroll') {
+      return;
+    }
+    this.grid.showSpinner();
   }
 
   public actionComplete(args: CellSaveEventArgs) {
     if (args.requestType === 'save') {
-      const task = new TaskModel(args.data);
-
-      this.grid.showSpinner();
-      this.requestService.updateRow(task).subscribe((res) => {
-        if (res.success) {
-          this.data = [...this.data];
-        }
-        this.grid.hideSpinner();
-      });
+      const task = this.createDataRow(args.data);
+      this.requestService.updateRow(task).subscribe();
     }
+    this.grid.hideSpinner();
+  }
+
+  /**
+   * Преобразовать данные для отправки
+   * @param data строка
+   * @return Данные строки по всем полям столбцов
+   */
+  private createDataRow(data: any): TaskModel {
+    const task = new TaskModel(data);
+    const fields = this.columns.map((col) => col.field);
+
+    fields.forEach((field) => {
+      console.log(field);
+      task[field] = data[field];
+    });
+
+    return task;
   }
 
   public rowDrop(args: RowDragEventArgs) {
@@ -328,16 +397,14 @@ export class AppComponent implements OnInit, AfterViewInit {
   private createRow(isParent: boolean, data?: TaskModel): void {
     const selectedRec = this.grid.getSelectedRecords()[0] as TaskModel;
     const taskID = this.cutMode ? data.taskID : uid();
-
+    const offsetNextPaste = 2;
     const newRec = {
       ...data,
       taskID,
-      parentIndex: isParent
-        ? selectedRec.taskID
-        : (selectedRec.parentIndex as TaskModel)?.taskID ?? null,
+      parentIndex: isParent ? selectedRec.taskID : selectedRec.parentIndex,
       isParent: isParent,
     };
-    this.data.splice(this.clickedRowIndex + 1, 0, newRec);
+    this.data.splice(this.clickedRowIndex + offsetNextPaste, 0, newRec);
   }
 
   /**
@@ -410,7 +477,7 @@ export class AppComponent implements OnInit, AfterViewInit {
         : ++this.clickedColIndex;
 
     // Virtual scrolling is not compatible with Batch editing, detail template and Frozen columns
-    // this.grid.enableVirtualization = !this.grid.enableVirtualization;
+    this.grid.enableVirtualization = !this.grid.enableVirtualization;
     this.frozenColumns = this.frozenColumns ? 0 : currentColumn;
   }
 
@@ -454,17 +521,6 @@ export class AppComponent implements OnInit, AfterViewInit {
     });
     args.element.innerHTML = '';
     args.element.appendChild(check);
-  }
-
-  /**
-   * Обновление контекстного меню
-   * Исправляет баг с непоявлением контекстных меню
-   * после манипуляций с колонками
-   */
-  private refreshContextMenu(): void {
-    setTimeout(() => {
-      this.contextMenu.refresh();
-    }, 5);
   }
 
   /**

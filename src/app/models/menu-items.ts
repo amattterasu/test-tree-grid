@@ -46,6 +46,10 @@ export const headerMenuItems: MenuItemModel[] = [
 
 export const rowCheckboxMenuItems: MenuItemModel[] = [
   {
+    text: 'Allow Reorder Columns',
+    id: 'col-reorder',
+  },
+  {
     text: 'Multi-Select',
     id: 'row-multi-select',
   },

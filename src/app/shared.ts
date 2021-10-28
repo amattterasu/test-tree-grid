@@ -1,6 +1,7 @@
 import { FieldSettingsModel } from '@syncfusion/ej2-angular-dropdowns';
 
 export const UID_LENGTH = 16;
+export const MAX_FONT_SIZE = 100;
 
 export function createDataSource(
   typesValue: String[],

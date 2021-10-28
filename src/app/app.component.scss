@@ -23,6 +23,10 @@
   .e-gridheader .e-icons:not(.e-icon-hide):not(.e-check):not(.e-stop) {
     padding-right: 2.8em;
   }
+
+  .e-treecell {
+    line-height: normal !important;
+  }
 }
 
 ::ng-deep .e-dialog .e-dlg-header-content {

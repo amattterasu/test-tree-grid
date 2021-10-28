@@ -8,6 +8,7 @@ export class TaskModel {
   priority?: string;
   parentIndex?: string | number;
   isParent?: boolean;
+  [key: string]: any;
 
   constructor(task: TaskModel) {
     this.taskID = task.taskID;
