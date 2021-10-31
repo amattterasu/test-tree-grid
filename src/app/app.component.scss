@@ -3,6 +3,12 @@
 }
 
 ::ng-deep .e-grid {
+  &.e-gridhover
+    tr[role="row"]:not(.e-editedrow):hover
+    .e-rowcell:not(.e-cellselectionbackground):not(.e-active):not(.e-updatedtd):not(.e-indentcell) {
+    background-color: #eee !important;
+    color: #000 !important;
+  }
   .e-content {
     cursor: default;
   }
@@ -12,8 +18,12 @@
       width: 100% !important;
     }
   }
+  td.e-active {
+    background: #e0e0e0 !important;
+    color: #000 !important;
+  }
 
-  .bg-pink {
+  .bg-pink > td {
     background: pink !important;
     & > .e-active {
       background: unset;

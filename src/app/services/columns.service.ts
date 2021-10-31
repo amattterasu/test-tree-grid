@@ -130,7 +130,11 @@ export class ColumnsService {
       },
     };
     col.displayAsCheckBox = value.typeData === DataEditTypes.booleanedit;
-    this.grid.refreshColumns();
+    this.requestService.updateColumn(col).subscribe((res) => {
+      if (res.success) {
+        this.grid.refreshColumns();
+      }
+    });
     dialog.hide();
   }
 

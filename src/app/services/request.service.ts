@@ -50,14 +50,22 @@ export class RequestService {
     );
   }
 
-  public updateColumn(col: ColumnModel, headerText: string): Observable<any> {
-    const { field, editType } = col;
+  public updateColumn(
+    col: ColumnModel,
+    newHeaderText?: string
+  ): Observable<any> {
+    const { field, editType, customAttributes, minWidth, textAlign } = col;
+    const headerText = newHeaderText ?? col.headerText;
+
     return this.http.put<any>(
       this.BASIC_URL + `/columns/${col.field}`,
       JSON.stringify({
         field,
         headerText,
         editType,
+        minWidth,
+        customAttributes,
+        textAlign,
       }),
       {
         headers: this.header,

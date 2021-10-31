@@ -5,6 +5,7 @@
     [allowReordering]="false"
     [allowResizing]="true"
     [treeColumnIndex]='0'
+    [enableHover]="true"
     [(dataSource)]='data'
     [editSettings]="editSettings"
     [frozenColumns]="frozenColumns"
@@ -23,6 +24,7 @@
     (actionBegin)="actionBegin($event)"
     (rowDrop)="rowDrop($event)"
     (expanding)="refreshGrid()"
+    (rowSelected)="rowSelected($event)"
   >
   </ejs-treegrid>
 </div>

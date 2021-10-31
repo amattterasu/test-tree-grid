@@ -1,3 +1,4 @@
+import { serverData } from './../datasource';
 import { TaskModel } from './models/taskModel';
 import { textWrap } from './models/wrap';
 import { FormService } from './services/form.service';
@@ -36,10 +37,12 @@ import {
 import { FieldSettingsModel } from '@syncfusion/ej2-angular-dropdowns';
 import { dataTypes } from './models/types';
 import { alignment } from './models/alignment';
-import { getClone, UID_LENGTH } from './shared';
 import { uid } from 'uid';
 import { RequestService } from './services/request.service';
-import { RowDragEventArgs } from '@syncfusion/ej2-angular-grids';
+import {
+  RowDragEventArgs,
+  RowSelectEventArgs,
+} from '@syncfusion/ej2-angular-grids';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -71,6 +74,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private highlightedRows: HTMLElement[];
   private cutMode: boolean;
   private destroy$: Subject<any> = new Subject<any>();
+  private headerIds: string[];
+  private rowIds: string[];
 
   @ViewChild('grid') grid: TreeGridComponent;
   @ViewChild('contextMenu') contextMenu: ContextMenuComponent;
@@ -94,6 +99,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((rows: TaskModel[]) => {
         this.data = rows;
+        // this.data = serverData;
         console.info('Rows count:', this.data.length);
       });
   }
@@ -174,6 +180,18 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.highlightedRows = [];
     this.visible = false;
     this.cutMode = false;
+    this.contextMenuItems = [
+      ...headerCheckboxMenuItems,
+      ...headerMenuItems,
+      ...rowCheckboxMenuItems,
+      ...rowMenuItems,
+    ];
+    this.headerIds = [...headerCheckboxMenuItems, ...headerMenuItems].map(
+      (item) => item.id
+    );
+    this.rowIds = [...rowCheckboxMenuItems, ...rowMenuItems].map(
+      (item) => item.id
+    );
   }
 
   /**
@@ -309,8 +327,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.needReverseData = true;
 
     this.grid.getSelectedRecords().forEach((row: TaskModel) => {
-      const rowClone = getClone(row);
-      this.copyData.push(rowClone);
+      this.copyData.push({ ...row });
     });
   }
 
@@ -377,18 +394,21 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     const fields = this.columns.map((col) => col.field);
 
     fields.forEach((field) => {
-      console.log(field);
       task[field] = data[field];
     });
 
     return task;
   }
 
+  /**
+   * Запрет перемещения root строк в child
+   */
   public rowDrop(args: RowDragEventArgs) {
     if (args.fromIndex === args.dropIndex) {
       return;
     }
   }
+
   /**
    * Создать строку
    * @param position Позиция добавления
@@ -405,6 +425,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       isParent: isParent,
     };
     this.data.splice(this.clickedRowIndex + offsetNextPaste, 0, newRec);
+  }
+
+  rowSelected(args: RowSelectEventArgs) {
+    console.log(args);
   }
 
   /**
@@ -533,15 +557,30 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     const col = elem.closest('.e-headercell');
 
     if (row) {
-      this.contextMenuItems = [...rowCheckboxMenuItems, ...rowMenuItems];
+      this.switchContextMenuItems(this.rowIds, this.headerIds);
       this.clickedRowIndex = +row.parentElement.getAttribute('aria-rowindex');
       return;
     }
     if (col) {
-      this.contextMenuItems = [...headerCheckboxMenuItems, ...headerMenuItems];
+      this.switchContextMenuItems(this.headerIds, this.rowIds);
       this.clickedColIndex = +col.getAttribute('aria-colindex');
       return;
     }
     args.cancel = true;
+  }
+
+  /**
+   * Изменить опции в контекстном меню
+   * @param showItems Опции для показа
+   * @param hideItems Опции для скрытия
+   * @param isUniqueId Идентификация опций по id
+   */
+  private switchContextMenuItems(
+    showItems: string[],
+    hideItems: string[],
+    isUniqueId = true
+  ): void {
+    this.contextMenu.hideItems(hideItems, isUniqueId);
+    this.contextMenu.showItems(showItems, isUniqueId);
   }
 }

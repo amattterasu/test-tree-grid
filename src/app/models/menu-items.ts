@@ -13,9 +13,6 @@ export const headerCheckboxMenuItems: MenuItemModel[] = [
     text: 'Multi-Sort',
     id: 'col-sort',
   },
-  {
-    separator: true,
-  },
 ];
 
 export const headerMenuItems: MenuItemModel[] = [
@@ -26,9 +23,6 @@ export const headerMenuItems: MenuItemModel[] = [
   {
     text: 'Choose',
     id: 'col-choose',
-  },
-  {
-    separator: true,
   },
   {
     text: 'New',
@@ -53,9 +47,6 @@ export const rowCheckboxMenuItems: MenuItemModel[] = [
     text: 'Multi-Select',
     id: 'row-multi-select',
   },
-  {
-    separator: true,
-  },
 ];
 
 export const rowMenuItems: MenuItemModel[] = [
@@ -76,18 +67,12 @@ export const rowMenuItems: MenuItemModel[] = [
     id: 'row-editRow',
   },
   {
-    separator: true,
-  },
-  {
     text: 'Copy',
     id: 'row-copy',
   },
   {
     text: 'Cut',
     id: 'row-cut',
-  },
-  {
-    separator: true,
   },
   {
     text: 'Paste Sibling',
